@@ -18,8 +18,8 @@ class Model(object):
         # for position in self.chromosome:
         #     self.fitness += (position[0]*position[0] + position[1]*position[1] + position[2]*position[2])
 
-        for position, referencePosition in zip(self.chromosome, reference_model.vertices):
-            self.fitness -= (position[0] - referencePosition.co[0]) * (position[0] - referencePosition.co[0]) + (position[1] - referencePosition.co[1]) * (position[1] - referencePosition.co[1]) + (position[2] - referencePosition.co[2]) * (position[2] - referencePosition.co[2])
+        for position, reference_position in zip(self.chromosome, reference_model.vertices):
+            self.fitness -= (position[0] - reference_position.co[0]) * (position[0] - reference_position.co[0]) + (position[1] - reference_position.co[1]) * (position[1] - reference_position.co[1]) + (position[2] - reference_position.co[2]) * (position[2] - reference_position.co[2])
 
         # for position in self.chromosome:
         #     distance = abs((position[0]*position[0] + position[1]*position[1] + position[2]*position[2]) - 1)
@@ -29,32 +29,32 @@ class Model(object):
     def get_vertices_positions(self):
         return self.chromosome
 
-    def crossover(self, secondModel):
-        firstChildPositions = []
-        secondChildPositions = []
+    def crossover(self, second_model):
+        first_child_positions = []
+        second_child_positions = []
         for i in range(len(self.chromosome)):
             if random() < 0.5:
-                firstChildPositions.append(self.chromosome[i])
-                secondChildPositions.append(secondModel.chromosome[i])
+                first_child_positions.append(self.chromosome[i])
+                second_child_positions.append(second_model.chromosome[i])
             else:
-                firstChildPositions.append(secondModel.chromosome[i])
-                secondChildPositions.append(self.chromosome[i])
+                first_child_positions.append(second_model.chromosome[i])
+                second_child_positions.append(self.chromosome[i])
 
-        return [Model(firstChildPositions), Model(secondChildPositions)]
+        return [Model(first_child_positions), Model(second_child_positions)]
 
     def one_point_crossover(self, second_model):
         crossover_point = randrange(len(self.chromosome))
-        firstChildPositions = []
-        secondChildPositions = []
+        first_child_positions = []
+        second_child_positions = []
         for i in range(len(self.chromosome)):
             if i < crossover_point:
-                firstChildPositions.append(self.chromosome[i])
-                secondChildPositions.append(second_model.chromosome[i])
+                first_child_positions.append(self.chromosome[i])
+                second_child_positions.append(second_model.chromosome[i])
             else:
-                firstChildPositions.append(second_model.chromosome[i])
-                secondChildPositions.append(self.chromosome[i])
+                first_child_positions.append(second_model.chromosome[i])
+                second_child_positions.append(self.chromosome[i])
 
-        return [Model(firstChildPositions), Model(secondChildPositions)]
+        return [Model(first_child_positions), Model(second_child_positions)]
         
     def multi_point_crossover(self, second_model):
         crossover_points = [randrange(len(self.chromosome))]
@@ -62,22 +62,22 @@ class Model(object):
         crossover_points.append(randrange(len(self.chromosome)))
         crossover_points.sort()
         crossover_index = 0
-        firstChildPositions = []
-        secondChildPositions = []
+        first_child_positions = []
+        second_child_positions = []
         for i in range(len(self.chromosome)):
             if crossover_index< len(crossover_points) and i == crossover_points[crossover_index]:
                 # swap lists
-                secondChildPositions, firstChildPositions = firstChildPositions, secondChildPositions
+                second_child_positions, first_child_positions = first_child_positions, second_child_positions
                 crossover_index+=1
-            firstChildPositions.append(self.chromosome[i])
-            secondChildPositions.append(second_model.chromosome[i])
+            first_child_positions.append(self.chromosome[i])
+            second_child_positions.append(second_model.chromosome[i])
 
-        return [Model(firstChildPositions), Model(secondChildPositions)]
+        return [Model(first_child_positions), Model(second_child_positions)]
 
     def mutate(self):
-        firstPosition = randrange(len(self.chromosome))
-        secondPosition = randrange(len(self.chromosome))       
-        self.chromosome[secondPosition], self.chromosome[firstPosition] = self.chromosome[firstPosition], self.chromosome[secondPosition]      
+        first_position = randrange(len(self.chromosome))
+        second_position = randrange(len(self.chromosome))       
+        self.chromosome[second_position], self.chromosome[first_position] = self.chromosome[first_position], self.chromosome[second_position]      
         self.calculate_fitness()
 
 def insert_keyframe(fcurves, frame, values):
