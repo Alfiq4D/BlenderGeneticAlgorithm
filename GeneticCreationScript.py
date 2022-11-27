@@ -100,6 +100,9 @@ def create_reference_sphere(u, v):
     global reference_edges
     reference_edges = [e.vertices for e in reference_model.edges]
 
+    return mesh
+
+
 def initialize_population(population_size, chromosome_size, space_size, space_bounds):
     population = []
     for _ in range (population_size):
@@ -153,9 +156,9 @@ def get_elite_from_sorted_popuation(population, count):
     elite[-1].mutate()
     return elite
 
-def select_parent_turnament(population, count):
+def select_parent_turnament(population, count, is_maximized):
     turnament_selection = sample(population, count)
-    turnament_selection.sort(key=lambda m: m.fitness, reverse=True)
+    turnament_selection.sort(key=lambda m: m.fitness, reverse=is_maximized)
     return turnament_selection[0]
 
 def select_parent_rulette(population, partial_sums, fitness_sum):
@@ -173,41 +176,50 @@ def is_model_better(new_model, old_model, is_maximized):
     return False
 
 def main():
-    # parameters
+    # genetic algorithm parameters
+    population_size = 6000
+    mutation_probability = 0.2
+    max_generations = 150
+    turnament_count = 3
+    max_generations_without_improvement = 5
+    use_elitism = False
+    elite_count = 2
+
+    # mode parameters
+    use_points_mode = False # in this mode, the positions will be optimized to be as far away from the center of the space as possible
+    chromosome_size = 100 # this value is used only in points mode
     u_sphere = 8
     v_sphere = 7
-    # create blender uv sphere
-    create_reference_sphere(u_sphere, v_sphere)
 
-    selected_obj = bpy.context.selected_objects[0]
-    if selected_obj is not None:
+    # program parametrs
+    create_animation = True
+    space_bounds = [-1, 1] # all vertices positions will be created inside this space in each axis (X, Y, Z)
+
+    # calculate mode specific model
+    if use_points_mode:       
+        is_maximized = False
+    else:
+        is_maximized = True
+        selected_obj = bpy.context.selected_objects[0]
         global reference_model
-        reference_model = selected_obj.data
-
-    turnament_count = 3
-    elite_count = 2
-    mutation_probability = 0.2
-    population_size = 6000
-    # chromosome_size = 100
-    # chromosome_size = u_sphere * (v_sphere - 1) + 2
-    chromosome_size = len(reference_model.vertices)
-    max_generations = 150
-    max_generations_without_improvement = 5
-    generations_without_improvement_count = 0
-    best_model = None
-    animate = True
-    animation_positions = []
-    space_bounds = [-1, 1] # all vertices positions will be created inside this space
-    space_size = space_bounds[1] - space_bounds[0]
-    is_maximized = True
-
-
-
+        if selected_obj is not None:
+            reference_model = selected_obj.data
+        else:
+            # create blender uv sphere
+            reference_model = create_reference_sphere(u_sphere, v_sphere)
+        chromosome_size = len(reference_model.vertices)
+        
     # initilize population
     population = initialize_population(population_size, chromosome_size, space_size, space_bounds)
 
+    #program variables
+    space_size = space_bounds[1] - space_bounds[0]
+    generations_without_improvement_count = 0
+    best_model = None
+    animation_positions = []
     last_fitness = 0
-    generation = 0 
+    generation = 0
+
     while generation <= max_generations:
         # partial_sums = list(itertools.accumulate(model.fitness for model in population))
         # fitness_sum = partial_sums[-1]
@@ -217,9 +229,9 @@ def main():
 
             # selection
             # first_parent = select_parent_rulette(population, partial_sums, fitness_sum)
-            first_parent = select_parent_turnament(population, turnament_count)
+            first_parent = select_parent_turnament(population, turnament_count, is_maximized)
             # second_parent = select_parent_rulette(population, partial_sums, fitness_sum)
-            second_parent = select_parent_turnament(population, turnament_count)
+            second_parent = select_parent_turnament(population, turnament_count, is_maximized)
 
             # crossover
             offspring.extend(first_parent.crossover(second_parent))
@@ -230,10 +242,11 @@ def main():
             if random() < mutation_probability:
                 offspring[-2].mutate()
 
-        population.sort(key=lambda m: m.fitness, reverse=True)
+        population.sort(key=lambda m: m.fitness, reverse=is_maximized)
 
         # elitism
-        # offspring.extend(get_elite_from_sorted_popuation(population, elite_count))
+        if use_elitism:
+            offspring.extend(get_elite_from_sorted_popuation(population, elite_count))
  
         print('Generation: ', generation, ' Fitness: ', population[0].fitness)
 
@@ -248,21 +261,21 @@ def main():
         if generations_without_improvement_count == max_generations_without_improvement:
             break
 
-        if animate:
+        if create_animation:
             animation_positions.append(population[0].get_vertices_positions())
 
         population = offspring
         generation += 1
 
-    population.sort(key=lambda m: m.fitness, reverse=True)
+    population.sort(key=lambda m: m.fitness, reverse=is_maximized)
     if is_model_better(population[0], best_model, is_maximized):
         best_model = population[0]
 
-    # make mesh
+    # create mesh
     positions = best_model.get_vertices_positions()
     new_mesh = create_mesh(positions)
 
-    if animate:
+    if create_animation:
         animation_positions.append(positions)
         create_animation(new_mesh, generation, animation_positions)
 
