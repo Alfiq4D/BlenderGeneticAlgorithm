@@ -198,7 +198,7 @@ def main():
     # calculate mode specific model
     if not use_points_mode:
         global reference_model
-        if bpy.context.selected_objects and bpy.context.selected_objects[0] is not None:
+        if bpy.context.selected_objects and bpy.context.selected_objects[0] is not None and bpy.context.selected_objects[0].vertices:
             reference_model = bpy.context.selected_objects[0].data
         else:
             # create blender uv sphere
