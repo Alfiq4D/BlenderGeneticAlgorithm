@@ -15,11 +15,13 @@ class Model(object):
 
     def calculate_fitness(self):
         self.fitness = 0
-        # for position in self.chromosome:
-        #     self.fitness += (position[0]*position[0] + position[1]*position[1] + position[2]*position[2])
 
-        for position, reference_position in zip(self.chromosome, reference_model.vertices):
-            self.fitness -= (position[0] - reference_position.co[0]) * (position[0] - reference_position.co[0]) + (position[1] - reference_position.co[1]) * (position[1] - reference_position.co[1]) + (position[2] - reference_position.co[2]) * (position[2] - reference_position.co[2])
+        if reference_model is not None:      
+            for position, reference_position in zip(self.chromosome, reference_model.vertices):
+                self.fitness -= (position[0] - reference_position.co[0]) * (position[0] - reference_position.co[0]) + (position[1] - reference_position.co[1]) * (position[1] - reference_position.co[1]) + (position[2] - reference_position.co[2]) * (position[2] - reference_position.co[2])
+        else:
+            for position in self.chromosome:
+                self.fitness += (position[0]*position[0] + position[1]*position[1] + position[2]*position[2])
 
         # for position in self.chromosome:
         #     distance = abs((position[0]*position[0] + position[1]*position[1] + position[2]*position[2]) - 1)
@@ -116,10 +118,12 @@ def initialize_population(population_size, chromosome_size, space_size, space_bo
     return population
 
 def create_mesh(vertices):
-    edges = []
-    edges = [e.vertices for e in reference_model.edges]
-    faces = []
-    faces = [f.vertices for f in reference_model.polygons]
+    if reference_model is not None:
+        edges = [e.vertices for e in reference_model.edges]
+        faces = [f.vertices for f in reference_model.polygons]
+    else:
+        edges = []
+        faces = []
     new_mesh = bpy.data.meshes.new('OptimizedMesh')
     new_mesh.from_pydata(vertices, edges, faces)
     new_mesh.update()
@@ -192,14 +196,11 @@ def main():
     v_sphere = 7
 
     # program parametrs
-    create_animation = True
+    animate_results = True
     space_bounds = [-1, 1] # all vertices positions will be created inside this space in each axis (X, Y, Z)
 
     # calculate mode specific model
-    if use_points_mode:       
-        is_maximized = False
-    else:
-        is_maximized = True
+    if not use_points_mode:
         selected_obj = bpy.context.selected_objects[0]
         global reference_model
         if selected_obj is not None:
@@ -210,10 +211,11 @@ def main():
         chromosome_size = len(reference_model.vertices)
         
     # initilize population
+    space_size = space_bounds[1] - space_bounds[0]
     population = initialize_population(population_size, chromosome_size, space_size, space_bounds)
 
     #program variables
-    space_size = space_bounds[1] - space_bounds[0]
+    is_maximized = True
     generations_without_improvement_count = 0
     best_model = None
     animation_positions = []
@@ -261,7 +263,7 @@ def main():
         if generations_without_improvement_count == max_generations_without_improvement:
             break
 
-        if create_animation:
+        if animate_results:
             animation_positions.append(population[0].get_vertices_positions())
 
         population = offspring
@@ -275,7 +277,7 @@ def main():
     positions = best_model.get_vertices_positions()
     new_mesh = create_mesh(positions)
 
-    if create_animation:
+    if animate_results:
         animation_positions.append(positions)
         create_animation(new_mesh, generation, animation_positions)
 
