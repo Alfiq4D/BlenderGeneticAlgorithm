@@ -1,11 +1,10 @@
-from math import sqrt
+import itertools
 from random import random, randrange, sample
 import bpy
 import bmesh
 import copy
 
 reference_model = None
-reference_edges = []
 
 class Model(object):
 
@@ -23,15 +22,15 @@ class Model(object):
             for position in self.chromosome:
                 self.fitness += (position[0]*position[0] + position[1]*position[1] + position[2]*position[2])
 
-        # for position in self.chromosome:
-        #     distance = abs((position[0]*position[0] + position[1]*position[1] + position[2]*position[2]) - 1)
-        #     if distance > 0.05:
-        #         self.fitness -= distance
+            # for position in self.chromosome:
+            #     distance = abs((position[0]*position[0] + position[1]*position[1] + position[2]*position[2]) - 1)
+            #     if distance > 0.05:
+            #         self.fitness -= distance
 
     def get_vertices_positions(self):
         return self.chromosome
 
-    def crossover(self, second_model):
+    def uniform_crossover(self, second_model):
         first_child_positions = []
         second_child_positions = []
         for i in range(len(self.chromosome)):
@@ -76,6 +75,15 @@ class Model(object):
 
         return [Model(first_child_positions), Model(second_child_positions)]
 
+    def crossover(self, second_model, crossover_method):
+        if crossover_method == 0:
+            return self.uniform_crossover(second_model)
+        if crossover_method == 1:
+            return self.one_point_crossover(second_model)
+        if crossover_method == 2:
+            return self.multi_point_crossover(second_model)
+        return []
+
     def mutate(self):
         first_position = randrange(len(self.chromosome))
         second_position = randrange(len(self.chromosome))       
@@ -95,15 +103,7 @@ def create_reference_sphere(u, v):
     bmesh.ops.create_uvsphere(bm, u_segments=u, v_segments=v, radius=1)
     bm.to_mesh(mesh)
     bm.free()
-
-    global reference_model
-    reference_model = mesh
-
-    global reference_edges
-    reference_edges = [e.vertices for e in reference_model.edges]
-
     return mesh
-
 
 def initialize_population(population_size, chromosome_size, space_size, space_bounds):
     population = []
@@ -188,6 +188,8 @@ def main():
     max_generations_without_improvement = 5
     use_elitism = False
     elite_count = 2
+    selection_method = 1 # 0: rulette selection, 1: turnament selection
+    crossover_method = 2 # 0: uniform crossover, 1: one point crossover, 2: multi point crossover
 
     # mode parameters
     use_points_mode = False # in this mode, the positions will be optimized to be as far away from the center of the space as possible
@@ -223,20 +225,23 @@ def main():
     generation = 0
 
     while generation <= max_generations:
-        # partial_sums = list(itertools.accumulate(model.fitness for model in population))
-        # fitness_sum = partial_sums[-1]
         offspring = []
+        if selection_method == 0:
+            partial_sums = list(itertools.accumulate(model.fitness for model in population))
+            fitness_sum = partial_sums[-1]
+            print(fitness_sum)
 
         for _ in range(int(population_size / 2)):
-
             # selection
-            # first_parent = select_parent_rulette(population, partial_sums, fitness_sum)
-            first_parent = select_parent_turnament(population, turnament_count, is_maximized)
-            # second_parent = select_parent_rulette(population, partial_sums, fitness_sum)
-            second_parent = select_parent_turnament(population, turnament_count, is_maximized)
+            if selection_method == 0:
+                first_parent = select_parent_rulette(population, partial_sums, fitness_sum)
+                second_parent = select_parent_rulette(population, partial_sums, fitness_sum)
+            elif selection_method == 1:
+                first_parent = select_parent_turnament(population, turnament_count, is_maximized)
+                second_parent = select_parent_turnament(population, turnament_count, is_maximized)
 
             # crossover
-            offspring.extend(first_parent.crossover(second_parent))
+            offspring.extend(first_parent.crossover(second_parent, crossover_method))
 
             # mutation
             if random() < mutation_probability:
