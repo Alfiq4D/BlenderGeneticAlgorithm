@@ -165,11 +165,6 @@ def select_parent_turnament(population, count, is_maximized):
     turnament_selection.sort(key=lambda m: m.fitness, reverse=is_maximized)
     return turnament_selection[0]
 
-def select_parent_rulette(population, partial_sums, fitness_sum):
-    parent_threshold = randrange(int(fitness_sum) + 1)
-    parent_index = next(i for i, val in enumerate(partial_sums) if val > parent_threshold)
-    return population[parent_index]
-
 def is_model_better(new_model, old_model, is_maximized):
     if old_model is None:
         return True
@@ -188,7 +183,6 @@ def main():
     max_generations_without_improvement = 5
     use_elitism = False
     elite_count = 2
-    selection_method = 1 # 0: rulette selection, 1: turnament selection
     crossover_method = 2 # 0: uniform crossover, 1: one point crossover, 2: multi point crossover
 
     # mode parameters
@@ -203,10 +197,9 @@ def main():
 
     # calculate mode specific model
     if not use_points_mode:
-        selected_obj = bpy.context.selected_objects[0]
         global reference_model
-        if selected_obj is not None:
-            reference_model = selected_obj.data
+        if bpy.context.selected_objects and bpy.context.selected_objects[0] is not None:
+            reference_model = bpy.context.selected_objects[0].data
         else:
             # create blender uv sphere
             reference_model = create_reference_sphere(u_sphere, v_sphere)
@@ -226,19 +219,10 @@ def main():
 
     while generation <= max_generations:
         offspring = []
-        if selection_method == 0:
-            partial_sums = list(itertools.accumulate(model.fitness for model in population))
-            fitness_sum = partial_sums[-1]
-            print(fitness_sum)
-
         for _ in range(int(population_size / 2)):
             # selection
-            if selection_method == 0:
-                first_parent = select_parent_rulette(population, partial_sums, fitness_sum)
-                second_parent = select_parent_rulette(population, partial_sums, fitness_sum)
-            elif selection_method == 1:
-                first_parent = select_parent_turnament(population, turnament_count, is_maximized)
-                second_parent = select_parent_turnament(population, turnament_count, is_maximized)
+            first_parent = select_parent_turnament(population, turnament_count, is_maximized)
+            second_parent = select_parent_turnament(population, turnament_count, is_maximized)
 
             # crossover
             offspring.extend(first_parent.crossover(second_parent, crossover_method))
