@@ -1,10 +1,28 @@
-import itertools
 from random import random, randrange, sample
 import bpy
 import bmesh
 import copy
 
 reference_model = None
+
+class Parameters(object):
+    # genetic algorithm parameters
+    population_size = 6000
+    mutation_probability = 0.2
+    max_generations = 150
+    turnament_count = 3
+    max_generations_without_improvement = 5
+    use_elitism = False
+    elite_count = 2
+    crossover_method = 2 # 0: uniform crossover, 1: one point crossover, 2: multi point crossover
+    # mode parameters
+    mode = 0 # 0: Points Mode, 1: Sphere mode, 2: Custom object mode
+    chromosome_size = 100 # used only in points mode
+    u_sphere = 8 # used only in sphere mode
+    v_sphere = 7 # used only in sphere mode
+    # program parametrs
+    animate_results = True
+    space_bounds = [-1, 1] # all vertices positions will be randomly created inside this compartment on each axis (X, Y, Z)
 
 class Model(object):
 
@@ -21,7 +39,6 @@ class Model(object):
         else:
             for position in self.chromosome:
                 self.fitness += (position[0]*position[0] + position[1]*position[1] + position[2]*position[2])
-
             # for position in self.chromosome:
             #     distance = abs((position[0]*position[0] + position[1]*position[1] + position[2]*position[2]) - 1)
             #     if distance > 0.05:
@@ -90,6 +107,96 @@ class Model(object):
         self.chromosome[second_position], self.chromosome[first_position] = self.chromosome[first_position], self.chromosome[second_position]      
         self.calculate_fitness()
 
+class GeneticOptimizer(object):
+    is_maximized = True
+
+    def __init__(self, population_size, chromosome_size, space_size, space_bounds):
+        self.generation = 0
+        self.best_model = None
+        self.population = []
+        for _ in range (population_size):
+            modelVertices = []
+            for _ in range(0, chromosome_size):
+                x = random() * space_size + space_bounds[0]
+                y = random() * space_size + space_bounds[0]
+                z = random() * space_size + space_bounds[0]
+                modelVertices.append([x, y, z])
+            self.population.append(Model(modelVertices))
+
+    def get_elite_from_sorted_popuation(self, count):
+        if count == 1:
+            return [self.population[0]]
+        if count < 1:
+            return []
+        elite = self.population[:count - 1]
+        elite.append(copy.deepcopy(self.population[0]))
+        elite[-1].mutate()
+        return elite
+
+    def select_parent_turnament(self, count, is_maximized):
+        turnament_selection = sample(self.population, count)
+        turnament_selection.sort(key=lambda m: m.fitness, reverse=is_maximized)
+        return turnament_selection[0]
+
+    def update_best_model(self, new_model):
+        if self.best_model is None:
+            self.best_model = new_model
+        if self.is_maximized and new_model.fitness > self.best_model.fitness:
+            self.best_model = new_model
+        elif not self.is_maximized and new_model.fitness < self.best_model.fitness:
+            self.best_model = new_model
+
+    def optimize(self, context):
+        best_positions = []
+        last_fitness = 0
+        generations_without_improvement_count = 0
+
+        while self.generation <= context.max_generations:      
+            self.population.sort(key=lambda m: m.fitness, reverse=self.is_maximized)
+            self.update_best_model(self.population[0])
+            print('Generation: ', self.generation, ' Fitness: ', self.population[0].fitness)
+
+            # check break condition
+            if self.population[0].fitness == last_fitness:
+                generations_without_improvement_count += 1
+            else:
+                last_fitness = self.population[0].fitness
+                generations_without_improvement_count = 0
+            if generations_without_improvement_count == context.max_generations_without_improvement:
+                break
+
+            if context.animate_results:
+                best_positions.append(self.population[0].get_vertices_positions())
+
+            offspring = []
+            for _ in range(int(context.population_size / 2)):
+                # selection
+                first_parent = self.select_parent_turnament(context.turnament_count, self.is_maximized)
+                second_parent = self.select_parent_turnament(context.turnament_count, self.is_maximized)
+
+                # crossover
+                offspring.extend(first_parent.crossover(second_parent, context.crossover_method))
+
+                # mutation
+                if random() < context.mutation_probability:
+                    offspring[-1].mutate()
+                if random() < context.mutation_probability:
+                    offspring[-2].mutate()
+
+            # elitism
+            if context.use_elitism:
+                offspring.extend(self.get_elite_from_sorted_popuation(context.elite_count))
+
+            self.population = offspring
+            self.generation += 1
+
+        self.population.sort(key=lambda m: m.fitness, reverse=self.is_maximized)
+        self.update_best_model(self.population[0])
+        if context.animate_results:
+            best_positions.append(self.best_model.get_vertices_positions())
+
+        return self.best_model, best_positions
+
 def insert_keyframe(fcurves, frame, values):
     for fcu, val in zip(fcurves, values):
         fcu.keyframe_points.insert(frame, val, options={'FAST'})
@@ -104,18 +211,6 @@ def create_reference_sphere(u, v):
     bm.to_mesh(mesh)
     bm.free()
     return mesh
-
-def initialize_population(population_size, chromosome_size, space_size, space_bounds):
-    population = []
-    for _ in range (population_size):
-        modelVertices = []
-        for _ in range(0, chromosome_size):
-            x = random() * space_size + space_bounds[0]
-            y = random() * space_size + space_bounds[0]
-            z = random() * space_size + space_bounds[0]
-            modelVertices.append([x, y, z])
-        population.append(Model(modelVertices))
-    return population
 
 def create_mesh(vertices):
     if reference_model is not None:
@@ -150,125 +245,30 @@ def create_animation(new_mesh, iterations_count, animation_positions):
             for t, animation_position in zip(frames, animation_positions):
                 insert_keyframe(fcurves, t, animation_position[v.index])  
 
-def get_elite_from_sorted_popuation(population, count):
-    if count == 1:
-        return [population[0]]
-    if count < 1:
-        return []
-    elite = population[:count - 1]
-    elite.append(copy.deepcopy(population[0]))
-    elite[-1].mutate()
-    return elite
-
-def select_parent_turnament(population, count, is_maximized):
-    turnament_selection = sample(population, count)
-    turnament_selection.sort(key=lambda m: m.fitness, reverse=is_maximized)
-    return turnament_selection[0]
-
-def is_model_better(new_model, old_model, is_maximized):
-    if old_model is None:
-        return True
-    if is_maximized and new_model.fitness > old_model.fitness:
-        return True
-    elif not is_maximized and new_model.fitness < old_model.fitness:
-        return True
-    return False
-
 def main():
-    # genetic algorithm parameters
-    population_size = 6000
-    mutation_probability = 0.2
-    max_generations = 150
-    turnament_count = 3
-    max_generations_without_improvement = 5
-    use_elitism = False
-    elite_count = 2
-    crossover_method = 2 # 0: uniform crossover, 1: one point crossover, 2: multi point crossover
-
-    # mode parameters
-    use_points_mode = False # in this mode, the positions will be optimized to be as far away from the center of the space as possible
-    chromosome_size = 100 # this value is used only in points mode
-    u_sphere = 8
-    v_sphere = 7
-
-    # program parametrs
-    animate_results = True
-    space_bounds = [-1, 1] # all vertices positions will be created inside this space in each axis (X, Y, Z)
-
+    parameters = Parameters()  
     # calculate mode specific model
-    if not use_points_mode:
+    if parameters.mode == "2":
         global reference_model
-        if bpy.context.selected_objects and bpy.context.selected_objects[0] is not None and bpy.context.selected_objects[0].vertices:
+        if bpy.context.selected_objects and bpy.context.selected_objects[0] is not None and bpy.context.selected_objects[0].type == 'MESH':
             reference_model = bpy.context.selected_objects[0].data
+            parameters.chromosome_size = len(reference_model.vertices)
         else:
-            # create blender uv sphere
-            reference_model = create_reference_sphere(u_sphere, v_sphere)
-        chromosome_size = len(reference_model.vertices)
-        
-    # initilize population
-    space_size = space_bounds[1] - space_bounds[0]
-    population = initialize_population(population_size, chromosome_size, space_size, space_bounds)
-
-    #program variables
-    is_maximized = True
-    generations_without_improvement_count = 0
-    best_model = None
-    animation_positions = []
-    last_fitness = 0
-    generation = 0
-
-    while generation <= max_generations:
-        offspring = []
-        for _ in range(int(population_size / 2)):
-            # selection
-            first_parent = select_parent_turnament(population, turnament_count, is_maximized)
-            second_parent = select_parent_turnament(population, turnament_count, is_maximized)
-
-            # crossover
-            offspring.extend(first_parent.crossover(second_parent, crossover_method))
-
-            # mutation
-            if random() < mutation_probability:
-                offspring[-1].mutate()
-            if random() < mutation_probability:
-                offspring[-2].mutate()
-
-        population.sort(key=lambda m: m.fitness, reverse=is_maximized)
-
-        # elitism
-        if use_elitism:
-            offspring.extend(get_elite_from_sorted_popuation(population, elite_count))
- 
-        print('Generation: ', generation, ' Fitness: ', population[0].fitness)
-
-        if is_model_better(population[0], best_model, is_maximized):
-            best_model = population[0]
-
-        if population[0].fitness == last_fitness:
-            generations_without_improvement_count += 1
-        else:
-            last_fitness = population[0].fitness
-            generations_without_improvement_count = 0
-        if generations_without_improvement_count == max_generations_without_improvement:
-            break
-
-        if animate_results:
-            animation_positions.append(population[0].get_vertices_positions())
-
-        population = offspring
-        generation += 1
-
-    population.sort(key=lambda m: m.fitness, reverse=is_maximized)
-    if is_model_better(population[0], best_model, is_maximized):
-        best_model = population[0]
-
+            return
+    elif parameters.mode == "1":
+        # create blender uv sphere
+        reference_model = create_reference_sphere(parameters.u_sphere, parameters.v_sphere)
+        parameters.chromosome_size = len(reference_model.vertices)
+    
+    # perform optimization
+    space_size = parameters.space_bounds[1] - parameters.space_bounds[0]
+    optimizer = GeneticOptimizer(parameters.population_size, parameters.chromosome_size, space_size, parameters.space_bounds)
+    best_model, animation_positions = optimizer.optimize(context=parameters)
+    
     # create mesh
-    positions = best_model.get_vertices_positions()
-    new_mesh = create_mesh(positions)
-
-    if animate_results:
-        animation_positions.append(positions)
-        create_animation(new_mesh, generation, animation_positions)
+    new_mesh = create_mesh(best_model.get_vertices_positions())
+    if parameters.animate_results:
+        create_animation(new_mesh, optimizer.generation, animation_positions)
 
 if __name__ == '__main__':
     main()

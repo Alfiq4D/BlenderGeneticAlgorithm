@@ -94,7 +94,7 @@ class Model(object):
         self.chromosome[second_position], self.chromosome[first_position] = self.chromosome[first_position], self.chromosome[second_position]      
         self.calculate_fitness()
 
-class GeneticOptimizer:
+class GeneticOptimizer(object):
     is_maximized = True
 
     def __init__(self, population_size, chromosome_size, space_size, space_bounds):
@@ -311,15 +311,15 @@ def register():
     bpy.types.Scene.max_generations_without_improvement = bpy.props.IntProperty(name="Max generations without improvement", default=5, min=1, max=10)
     bpy.types.Scene.use_elitism = bpy.props.BoolProperty(name="Use elitism", default=False)
     bpy.types.Scene.elite_count = bpy.props.IntProperty(name="Elite count", default=2, min=1, max=5)
-    bpy.types.Scene.crossover_method = bpy.props.EnumProperty(items=[("U", "Uniform crossover", ""), ("O", "One point crossover", ""), ("M", "Multi point crossover", ""),], name="Crossover method", default="M") # 0: uniform crossover, 1: one point crossover, 2: multi point crossover
+    bpy.types.Scene.crossover_method = bpy.props.EnumProperty(items=[("U", "Uniform crossover", ""), ("O", "One point crossover", ""), ("M", "Multi point crossover", ""),], name="Crossover method", default="M")
     # mode parameters
-    bpy.types.Scene.mode = bpy.props.EnumProperty(items=[("P", "Points Mode", ""), ("S", "Sphere mode", ""), ("C", "Custom object mode", ""),], name="Mode", default="C")
-    bpy.types.Scene.chromosome_size = bpy.props.IntProperty(name="Chromosome size", default=100, min=1, max=1000) # this value is used only in points mode
-    bpy.types.Scene.u_sphere = bpy.props.IntProperty(name="U sphere", default=8, min=2, max=20)
-    bpy.types.Scene.v_sphere = bpy.props.IntProperty(name="V sphere", default=7, min=2, max=20)
+    bpy.types.Scene.mode = bpy.props.EnumProperty(items=[("P", "Points mode", ""), ("S", "Sphere mode", ""), ("C", "Custom object mode", ""),], name="Mode", default="C")
+    bpy.types.Scene.chromosome_size = bpy.props.IntProperty(name="Chromosome size", default=100, min=1, max=1000) # used only in points mode
+    bpy.types.Scene.u_sphere = bpy.props.IntProperty(name="U sphere", default=8, min=2, max=20) # used only in sphere mode
+    bpy.types.Scene.v_sphere = bpy.props.IntProperty(name="V sphere", default=7, min=2, max=20) # used only in sphere mode
     # program parametrs
     bpy.types.Scene.animate_results = bpy.props.BoolProperty(name="Animate results", default=True)
-    bpy.types.Scene.space_bounds = bpy.props.FloatVectorProperty(name="Space bounds", default=(-1.0, 1.0), min=-2.0, max=2.0, size=2) # all vertices positions will be created inside this space in each axis (X, Y, Z)
+    bpy.types.Scene.space_bounds = bpy.props.FloatVectorProperty(name="Space bounds", default=(-1.0, 1.0), min=-2.0, max=2.0, size=2) # all vertices positions will be created inside this compartment on each axis (X, Y, Z)
 
 def unregister():
     del bpy.types.Scene.population_size
