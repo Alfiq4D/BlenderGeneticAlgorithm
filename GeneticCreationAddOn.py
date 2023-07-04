@@ -5,7 +5,7 @@ import copy
 
 bl_info = {
     "name": "Genetic Optimizer",
-    "blender": (3, 30, 0),
+    "blender": (3, 3, 0),
     "category": "Object",
 }
 
@@ -120,10 +120,10 @@ class GeneticOptimizer(object):
         elite[-1].mutate()
         return elite
 
-    def select_parent_turnament(self, count, is_maximized):
-        turnament_selection = sample(self.population, count)
-        turnament_selection.sort(key=lambda m: m.fitness, reverse=is_maximized)
-        return turnament_selection[0]
+    def select_parent_tournament(self, count, is_maximized):
+        tournament_selection = sample(self.population, count)
+        tournament_selection.sort(key=lambda m: m.fitness, reverse=is_maximized)
+        return tournament_selection[0]
 
     def update_best_model(self, new_model):
         if self.best_model is None:
@@ -158,8 +158,8 @@ class GeneticOptimizer(object):
             offspring = []
             for _ in range(int(context.scene.population_size / 2)):
                 # selection
-                first_parent = self.select_parent_turnament(context.scene.turnament_count, self.is_maximized)
-                second_parent = self.select_parent_turnament(context.scene.turnament_count, self.is_maximized)
+                first_parent = self.select_parent_tournament(context.scene.tournament_count, self.is_maximized)
+                second_parent = self.select_parent_tournament(context.scene.tournament_count, self.is_maximized)
 
                 # crossover
                 offspring.extend(first_parent.crossover(second_parent, context.scene.crossover_method))
@@ -251,6 +251,8 @@ class GeneticOperator(bpy.types.Operator):
             # create blender uv sphere
             reference_model = self.create_reference_sphere(context.scene.u_sphere, context.scene.v_sphere)
             context.scene.chromosome_size = len(reference_model.vertices)
+        else:
+            reference_model = None
         
         # perform optimization
         space_size = context.scene.space_bounds[1] - context.scene.space_bounds[0]
@@ -277,7 +279,7 @@ class ParametersPanel(bpy.types.Panel):
         column.prop(context.scene, "population_size")
         column.prop(context.scene, "mutation_probability")
         column.prop(context.scene, "max_generations")
-        column.prop(context.scene, "turnament_count")
+        column.prop(context.scene, "tournament_count")
         column.prop(context.scene, "max_generations_without_improvement")
         column.prop(context.scene, "use_elitism")
         column.prop(context.scene, "elite_count")
@@ -307,7 +309,7 @@ def register():
     bpy.types.Scene.population_size = bpy.props.IntProperty(name="Population size", default=6000, min=1, max=50000)
     bpy.types.Scene.mutation_probability = bpy.props.FloatProperty(name="Mutation probability", default=0.2, min=0, max=1)
     bpy.types.Scene.max_generations = bpy.props.IntProperty(name="Max generations", default=150, min=1, max=1000)
-    bpy.types.Scene.turnament_count = bpy.props.IntProperty(name="Turnament count", default=3, min=1, max=20)
+    bpy.types.Scene.tournament_count = bpy.props.IntProperty(name="Tournament count", default=3, min=1, max=20)
     bpy.types.Scene.max_generations_without_improvement = bpy.props.IntProperty(name="Max generations without improvement", default=5, min=1, max=10)
     bpy.types.Scene.use_elitism = bpy.props.BoolProperty(name="Use elitism", default=False)
     bpy.types.Scene.elite_count = bpy.props.IntProperty(name="Elite count", default=2, min=1, max=5)
@@ -325,7 +327,7 @@ def unregister():
     del bpy.types.Scene.population_size
     del bpy.types.Scene.mutation_probability
     del bpy.types.Scene.max_generations
-    del bpy.types.Scene.turnament_count
+    del bpy.types.Scene.tournament_count
     del bpy.types.Scene.max_generations_without_improvement
     del bpy.types.Scene.use_elitism
     del bpy.types.Scene.elite_count
