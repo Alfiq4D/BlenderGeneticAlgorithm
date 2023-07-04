@@ -32,7 +32,10 @@ Additionally, animation of best solutions in subsequent generations shows how su
 - Select GeneticCreationAddOn.py file from the disk and click Install Add-on.
 - Enable add-on by clicking on the box next to its name, the add-on name is ‘Genetic Optimizer’.
 - Add-on should be visible in the N-Panel
-![](Resources/PluginPanel.png)
+
+<p align="center">
+    <img src="Resources/Panel.png" width="100"/>
+</p>
 
 ## Usage
 To use this add-on set desired parameters values and click ‘Run optimization’
@@ -47,15 +50,25 @@ Additional information regarding optimization progress could be seen after click
 
 Optimization result for the sphere with chromosome size 26 after 75 generations (algorithm output, algorithm output and reference):
 
+<p align="center">
+
 | Algorithm output  | Algorithm output and reference |
-| ------------- | ------------- |
-| ![](Resources/Results/SphereResult1.png) | ![](Resources/Results/SphereResult2.png) |
+| :-------------: | :-------------: |
+| <img src="Resources/Results/SphereResult1.png" width="250"/>| <img src="Resources/Results/SphereResult2.png" width="250"/> |
+
+</p>
 
 Optimization result for the torus with chromosome size of 30 after 48 generations (algorithm output, algorithm output and reference, reference):
 
+<p align="center">
+
 | Algorithm output  | Algorithm output and reference | Reference |
-| ------------- | ------------- | ------------- |
-| ![](Resources/Results/TorusResult1.png) | ![](Resources/Results/TorusResult2.png) | ![](Resources/Results/TorusResult3.png) |
+| :-------------: | :-------------: | :-------------: |
+| <img src="Resources/Results/TorusResult1.png" width="250"/> | <img src="Resources/Results/TorusResult2.png" width="250"/> | <img src="Resources/Results/TorusResult3.png" width="250"/> |
+
+</p>
 
 Learning process:
-![](Resources/Results/LearningAnimation.gif)
+<p align="center">
+<img src="Resources/Results/LearningAnimation.gif" width="500"/>
+</p>
